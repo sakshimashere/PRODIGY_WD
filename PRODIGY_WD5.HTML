@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better aesthetics */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* Stronger shadow */
+            padding: 2.5rem;
+            max-width: 28rem; /* Increased max-width */
+            width: 100%;
+            text-align: center;
+            border: 1px solid #e2e8f0; /* Light border */
+        }
+        input[type="text"] {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem; /* Rounded input */
+            border: 1px solid #cbd5e0;
+            width: calc(100% - 2rem); /* Adjust width for padding */
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            transition: border-color 0.2s ease-in-out;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #6366f1; /* Indigo focus ring */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        button {
+            background-color: #6366f1; /* Indigo button */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem; /* Rounded button */
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            cursor: pointer;
+            border: none;
+            width: 100%; /* Full width button */
+        }
+        button:hover {
+            background-color: #4f46e5; /* Darker indigo on hover */
+            transform: translateY(-1px); /* Slight lift effect */
+        }
+        button:active {
+            transform: translateY(0); /* Press down effect */
+        }
+        .weather-info {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        .weather-info h2 {
+            font-size: 2.25rem; /* Larger city name */
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 0.5rem;
+        }
+        .weather-info p {
+            font-size: 1.125rem;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+        .weather-info .temperature {
+            font-size: 3.5rem; /* Very large temperature */
+            font-weight: 800;
+            color: #3182ce; /* Blue temperature */
+            margin-bottom: 1rem;
+        }
+        .message {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+        }
+        .message.error {
+            background-color: #fee2e2; /* Red background for errors */
+            color: #ef4444; /* Red text */
+            border: 1px solid #fca5a5;
+        }
+        .message.info {
+            background-color: #e0f2fe; /* Blue background for info */
+            color: #2563eb; /* Blue text */
+            border: 1px solid #93c5fd;
+        }
+        .message.loading {
+            background-color: #fef9c3; /* Yellow background for loading */
+            color: #d97706; /* Yellow text */
+            border: 1px solid #fcd34d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Weather Forecast</h1>
+
+        <div class="mb-4">
+            <input type="text" id="locationInput" placeholder="Enter city name or zip code">
+            <button id="getWeatherBtn">Get Weather</button>
+        </div>
+
+        <div id="message" class="message hidden"></div>
+
+        <div id="weatherInfo" class="weather-info hidden">
+            <h2 id="cityName"></h2>
+            <p id="description"></p>
+            <p class="temperature" id="temperature"></p>
+            <p id="humidity"></p>
+            <p id="windSpeed"></p>
+        </div>
+    </div>
+
+    <script>
+        // IMPORTANT: Replace 'YOUR_API_KEY' with your actual OpenWeatherMap API key.
+        // You can get one for free from: https://openweathermap.org/api
+        const API_KEY = 'c06a69ccbe17b552d6bda81ab144c2c2'; // <<< REPLACE THIS WITH YOUR API KEY
+
+        const locationInput = document.getElementById('locationInput');
+        const getWeatherBtn = document.getElementById('getWeatherBtn');
+        const weatherInfoDiv = document.getElementById('weatherInfo');
+        const messageDiv = document.getElementById('message');
+        const cityNameElem = document.getElementById('cityName');
+        const descriptionElem = document.getElementById('description');
+        const temperatureElem = document.getElementById('temperature');
+        const humidityElem = document.getElementById('humidity');
+        const windSpeedElem = document.getElementById('windSpeed');
+
+        /**
+         * Displays a message to the user.
+         * @param {string} msg - The message text.
+         * @param {string} type - The type of message ('error', 'info', 'loading').
+         */
+        function displayMessage(msg, type) {
+            messageDiv.textContent = msg;
+            messageDiv.className = `message ${type}`; // Apply type-specific styling
+            messageDiv.classList.remove('hidden');
+            weatherInfoDiv.classList.add('hidden'); // Hide weather info when a message is shown
+        }
+
+        /**
+         * Hides the message div.
+         */
+        function hideMessage() {
+            messageDiv.classList.add('hidden');
+        }
+
+        /**
+         * Fetches weather data from OpenWeatherMap API.
+         * @param {string} url - The API URL to fetch from.
+         */
+        async function fetchWeatherData(url) {
+            displayMessage('Fetching weather data...', 'loading');
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    // Check for HTTP errors (e.g., 404 for city not found)
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                displayWeather(data);
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+                displayMessage(`Failed to get weather: ${error.message}. Please try again.`, 'error');
+            }
+        }
+
+        /**
+         * Displays the fetched weather data on the page.
+         * @param {object} data - The weather data object from the API.
+         */
+        function displayWeather(data) {
+            hideMessage(); // Hide any previous messages
+
+            if (data.name && data.main && data.weather && data.wind) {
+                cityNameElem.textContent = data.name;
+                descriptionElem.textContent = data.weather[0].description.charAt(0).toUpperCase() + data.weather[0].description.slice(1);
+                // Convert temperature from Kelvin to Celsius and round to 1 decimal place
+                const tempCelsius = (data.main.temp - 273.15).toFixed(1);
+                temperatureElem.textContent = `${tempCelsius}°C`;
+                humidityElem.textContent = `Humidity: ${data.main.humidity}%`;
+                // Convert wind speed from m/s to km/h and round to 1 decimal place
+                const windKmH = (data.wind.speed * 3.6).toFixed(1);
+                windSpeedElem.textContent = `Wind Speed: ${windKmH} km/h`;
+                weatherInfoDiv.classList.remove('hidden');
+            } else {
+                displayMessage('Could not retrieve complete weather data. Please try a different location.', 'error');
+            }
+        }
+
+        /**
+         * Gets weather by city name from the input field.
+         */
+        function getWeatherByCityInput() {
+            const city = locationInput.value.trim();
+            if (city) {
+                const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}`;
+                fetchWeatherData(url);
+            } else {
+                displayMessage('Please enter a city name.', 'info');
+            }
+        }
+
+        /**
+         * Initializes geolocation to get user's current location and fetches weather.
+         */
+        function initGeolocation() {
+            if (navigator.geolocation) {
+                displayMessage('Detecting your location...', 'loading');
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}`;
+                        fetchWeatherData(url);
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        let errorMessage = 'Unable to retrieve your location.';
+                        if (error.code === error.PERMISSION_DENIED) {
+                            errorMessage += ' Please allow location access or enter a city manually.';
+                        } else if (error.code === error.POSITION_UNAVAILABLE) {
+                            errorMessage += ' Location information is unavailable.';
+                        } else if (error.code === error.TIMEOUT) {
+                            errorMessage += ' The request to get user location timed out.';
+                        }
+                        displayMessage(errorMessage, 'error');
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                displayMessage('Geolocation is not supported by your browser. Please enter a city manually.', 'error');
+            }
+        }
+
+        // Event listener for the button
+        getWeatherBtn.addEventListener('click', getWeatherByCityInput);
+
+        // Fetch weather based on geolocation when the page loads
+        window.onload = initGeolocation;
+    </script>
+</body>
+</html>
