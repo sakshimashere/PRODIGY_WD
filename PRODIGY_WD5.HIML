@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pune Weather App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .search-box {
+            margin: 20px 0;
+        }
+        #city-input {
+            padding: 10px;
+            width: 200px;
+        }
+        #search-btn {
+            padding: 10px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .weather-card {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pune Weather Finder</h1>
+    
+    <div class="search-box">
+        <input type="text" id="city-input" placeholder="Enter city (e.g., Pune,IN)">
+        <button id="search-btn">Get Weather</button>
+    </div>
+    
+    <div id="weather-result" class="weather-card">
+        <!-- Weather data will appear here -->
+    </div>
+
+    <script>
+        // Use your actual OpenWeatherMap API key
+        const API_KEY = "06a69ccbe17b552d6bda81ab144c2c2";
+        
+        document.getElementById('search-btn').addEventListener('click', function() {
+            const city = document.getElementById('city-input').value.trim();
+            
+            if (!city) {
+                showMessage("Please enter a city name", "error");
+                return;
+            }
+            
+            fetchWeather(city);
+        });
+
+        function fetchWeather(cityName) {
+            showMessage("Loading weather data...");
+            
+            fetch(https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${API_KEY}&units=metric)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(City "${cityName}" not found. Try with country code (e.g., Pune,IN));
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displayWeather(data);
+                })
+                .catch(error => {
+                    showMessage(error.message, "error");
+                    console.error("Error:", error);
+                });
+        }
+
+        function displayWeather(weatherData) {
+            const resultDiv = document.getElementById('weather-result');
+            resultDiv.innerHTML = `
+                <h2>${weatherData.name}, ${weatherData.sys.country}</h2>
+                <p><img src="https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png"></p>
+                <p>Temperature: ${weatherData.main.temp}°C</p>
+                <p>Feels like: ${weatherData.main.feels_like}°C</p>
+                <p>Weather: ${weatherData.weather[0].main}</p>
+                <p>Humidity: ${weatherData.main.humidity}%</p>
+            `;
+        }
+
+        function showMessage(message, type = "") {
+            const resultDiv = document.getElementById('weather-result');
+            resultDiv.innerHTML = <p class="${type}">${message}</p>;
+        }
+
+        // Load Pune weather by default
+        window.onload = function() {
+            fetchWeather("Pune,IN");
+        };
+    </script>
+</body>
+</html>
